@@ -1,16 +1,17 @@
-# Order Microservice
+# Order Service
 
-Servicio encargado de la gestión y procesamiento de órdenes de compra.
+## Description
+Handles customer orders and orchestration.
 
-## Detalles Técnicos
-- **Puerto:** 8082
-- **Base de Datos:** MongoDB (colección `ordenes`).
-- **Logs:** Envía logs al log group `ordenes-log-group` en CloudWatch (LocalStack).
+## Features
+- Order creation
+- Stores data in MongoDB
+- Implements simulated failure for retry testing
+- Sends retry jobs to Kafka topic `order_retry_jobs`.
 
-## Endpoints (vía Gateway)
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `POST` | `/ordenes` | Crear una nueva orden. |
-| `GET` | `/ordenes/{id}` | Obtener una orden por su ID. |
-| `GET` | `/ordenes/usuario/{usuarioId}` | Listar órdenes de un usuario específico. |
-| `PUT` | `/ordenes/{id}/status` | Actualizar el estado de una orden. |
+## Port
+- Default: `8082`
+
+## Endpoints
+- `POST /ordenes`: Create an order
+- `POST /ordenes/retry`: Endpoint for Broker Service to retry order saving.

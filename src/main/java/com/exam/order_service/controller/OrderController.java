@@ -14,15 +14,39 @@ public class OrderController {
 
     private static final Logger log = LoggerFactory.getLogger(OrderController.class);
     private final OrderRepository orderRepository;
+    private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
 
-    public OrderController(OrderRepository orderRepository) {
+    public OrderController(OrderRepository orderRepository, org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
         this.orderRepository = orderRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @PostMapping
     public Order createOrder(@RequestBody Order order) {
-        log.info("Creating order for user: {}", order.getUsuarioId());
-        order.setEstado("PENDIENTE");
+        try {
+            log.info("Creating order for user: {}", order.getUsuarioId());
+            // Simulate random failure for testing retries
+            if (Math.random() < 0.3) {
+                throw new RuntimeException("Simulated failure during order creation");
+            }
+            order.setEstado("PENDIENTE");
+            return orderRepository.save(order);
+        } catch (Exception e) {
+            log.error("Error creating order, sending to retry topic: {}", e.getMessage());
+            
+            java.util.Map<String, Object> wrappedPayload = new java.util.HashMap<>();
+            wrappedPayload.put("data", order);
+            wrappedPayload.put("sendEmail", java.util.Map.of("status", "PENDING", "message", ""));
+            wrappedPayload.put("updateRetryJobs", java.util.Map.of("status", "PENDING", "message", ""));
+            
+            kafkaTemplate.send("order_retry_jobs", wrappedPayload);
+            throw e;
+        }
+    }
+
+    @PostMapping("/retry")
+    public Order retry(@RequestBody Order order) {
+        log.info("Retrying save for order from user: {}", order.getUsuarioId());
         return orderRepository.save(order);
     }
 
